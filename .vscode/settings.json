@@ -1,0 +1,16 @@
+{
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.patterns": {
+    "package.json": "package-lock.json, yarn.lock, pnpm-lock.yaml, tsconfig.json, .eslintrc.json, .hintrc, esbuild.config.mjs",
+    "next.config.js": "next-env.d.ts, turbo.json",
+    "Dockerfile": "compose.prod.yml, compose.dev.yml, .dockerignore, *.dockerfile, entrypoint.sh",
+    "*.css": "*.css.map",
+    ".env": ".env.example"
+  },
+  "explorer.autoRevealExclude": {
+    "**/node_modules": true,
+    "**/build": true,
+    "**/vendor": true,
+    "**/migrations": true
+  },
+}

@@ -1,0 +1,26 @@
+services:
+  app:
+    volumes:
+      - ./public:/app/public
+    ports:
+      - 3000:3000
+    environment:
+      NEXTAUTH_URL: ${NEXTAUTH_URL}
+      NEXT_PUBLIC_NEXTAUTH_URL: ${NEXT_PUBLIC_NEXTAUTH_URL}
+    depends_on:
+      - db
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    ports:
+      - ${DB_PORT}:5432
+    volumes:
+      - ./docker/database/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ./docker/database/logs:/var/log/postgresql
+      - dbdata:/var/lib/postgresql/data
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    environment:
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+volumes:
+  dbdata:
