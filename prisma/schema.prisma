@@ -52,6 +52,7 @@ model User {
   password      String?
   accounts      Account[]
   sessions      Session[]
+  events        event[]
 
   @@map("users")
 }
@@ -63,4 +64,39 @@ model VerificationToken {
 
   @@unique([identifier, token])
   @@map("verification_tokens")
+}
+
+model event {
+  id                String                @id @default(cuid())
+  title             String
+  description       String?
+  startDate         DateTime
+  endDate           DateTime
+  linkZoom          String?
+  linkGoogleMeet    String?
+  linkGoogleMaps    String?
+  private           Boolean               @default(false)
+  requireApproval   Boolean               @default(false)
+  limitParticipants Int?
+  theme             String?
+  sound             String?
+  video             String?
+  image             String?
+  createdAt         DateTime              @default(now()) @map("created_at")
+  updatedAt         DateTime              @updatedAt @map("updated_at")
+  userId            String
+  user              User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invitations       invitationsForEvent[]
+}
+
+// el evento invita a
+model invitationsForEvent {
+  id        String   @id @default(cuid())
+  eventId   String
+  event     event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId    String
+  email     String
+  code      String   @unique
+  scanned   Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
 }

@@ -18,5 +18,7 @@
     "lib": "@/shared/infrastructure/shadcn/lib",
     "hooks": "@/shared/infrastructure/shadcn/hooks"
   },
-  "registries": {}
+  "registries": {
+    "@aceternity": "https://ui.aceternity.com/registry/{name}.json"
+  }
 }
