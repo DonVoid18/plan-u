@@ -27,7 +27,7 @@ export default function CheckInPage() {
   const [scannerEnabled, setScannerEnabled] = useState(true);
   const lastScanTimeRef = useRef<number>(0);
 
-  const handleScan = async (result: any) => {
+  const handleScan = async (result: Array<{ rawValue: string }>) => {
     if (isProcessing || showModal) return;
 
     // Prevenir escaneos múltiples en un período corto (debounce de 1.5 segundos)
