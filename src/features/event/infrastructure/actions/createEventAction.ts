@@ -51,7 +51,14 @@ export const createEventAction = async (formData: FormData) => {
 
     // Procesar archivo Excel si existe
     const emailsFile = formData.get("emailsFile") as File | null;
-    let invitedEmails: string[] = [];
+    let invitedParticipants: Array<{
+      dni: string;
+      names: string;
+      program: string;
+      mention: string;
+      email: string;
+    }> = [];
+    let duplicatesCount = 0;
 
     if (emailsFile && emailsFile.size > 0) {
       try {
@@ -64,10 +71,48 @@ export const createEventAction = async (formData: FormData) => {
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
 
-        // Convertir a JSON
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, {
-          header: 1,
-        }) as string[][];
+        // Convertir a JSON con encabezados
+        const jsonData = XLSX.utils.sheet_to_json(worksheet) as Record<
+          string,
+          any
+        >[];
+
+        // Función para encontrar columna case-insensitive y sin espacios extras
+        const findColumn = (
+          row: Record<string, any>,
+          columnName: string
+        ): string | undefined => {
+          const key = Object.keys(row).find(
+            (k) => k.toLowerCase().trim() === columnName.toLowerCase().trim()
+          );
+          return key && row[key] ? String(row[key]).trim() : undefined;
+        };
+
+        // Validar que existan las columnas obligatorias
+        if (jsonData.length > 0) {
+          const firstRow = jsonData[0];
+          const columns = Object.keys(firstRow).map((col) =>
+            col.toLowerCase().trim()
+          );
+          const requiredColumns = [
+            "dni",
+            "nombre y apellidos",
+            "programa",
+            "mencion",
+            "correo",
+          ];
+
+          const missingColumns = requiredColumns.filter(
+            (col) => !columns.includes(col)
+          );
+
+          if (missingColumns.length > 0) {
+            return {
+              success: false,
+              message: `El archivo Excel debe contener exactamente estas columnas (en minúsculas o mayúsculas): dni, nombre y apellidos, programa, mencion, correo. Faltan: ${missingColumns.join(", ")}`,
+            };
+          }
+        }
 
         // Validar email
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -75,38 +120,88 @@ export const createEventAction = async (formData: FormData) => {
           return emailRegex.test(email.trim());
         };
 
-        // Extraer correos de la primera columna
-        const extractedEmails: string[] = [];
+        // Extraer datos de las filas
+        const extractedParticipants: typeof invitedParticipants = [];
+        const errors: string[] = [];
 
         jsonData.forEach((row, index) => {
-          if (row.length > 0 && row[0]) {
-            const email = String(row[0]).trim();
+          const rowNumber = index + 2; // +2 porque index empieza en 0 y la primera fila es el encabezado
 
-            // Saltar encabezados comunes
-            if (
-              index === 0 &&
-              (email.toLowerCase() === "email" ||
-                email.toLowerCase() === "correo" ||
-                email.toLowerCase() === "e-mail" ||
-                email.toLowerCase() === "correos")
-            ) {
-              return;
-            }
+          const dni = findColumn(row, "dni");
+          const nombreYApellidos = findColumn(row, "nombre y apellidos");
+          const programa = findColumn(row, "programa");
+          const mencion = findColumn(row, "mencion");
+          const correo = findColumn(row, "correo");
 
-            if (email && validateEmail(email)) {
-              extractedEmails.push(email.toLowerCase());
-            }
+          // Validar campos obligatorios
+          if (!dni) {
+            errors.push(`Fila ${rowNumber}: Falta el campo dni`);
+            return;
+          }
+          if (!nombreYApellidos) {
+            errors.push(`Fila ${rowNumber}: Falta el campo nombre y apellidos`);
+            return;
+          }
+          if (!programa) {
+            errors.push(`Fila ${rowNumber}: Falta el campo programa`);
+            return;
+          }
+          if (!mencion) {
+            errors.push(`Fila ${rowNumber}: Falta el campo mencion`);
+            return;
+          }
+          if (!correo) {
+            errors.push(`Fila ${rowNumber}: Falta el campo correo`);
+            return;
+          }
+
+          // Validar formato de email
+          if (!validateEmail(correo)) {
+            errors.push(`Fila ${rowNumber}: Email inválido (${correo})`);
+            return;
+          }
+
+          extractedParticipants.push({
+            dni,
+            names: nombreYApellidos,
+            program: programa,
+            mention: mencion,
+            email: correo.toLowerCase(),
+          });
+        });
+
+        // Si hay errores, retornar con el detalle
+        if (errors.length > 0) {
+          return {
+            success: false,
+            message: `Error en el archivo Excel:\n${errors.slice(0, 5).join("\n")}${errors.length > 5 ? `\n... y ${errors.length - 5} errores más` : ""}`,
+          };
+        }
+
+        // Eliminar duplicados de DNI (mantener solo el primero)
+        const dniSet = new Set<string>();
+        const uniqueParticipants: typeof invitedParticipants = [];
+
+        extractedParticipants.forEach((p) => {
+          if (!dniSet.has(p.dni)) {
+            dniSet.add(p.dni);
+            uniqueParticipants.push(p);
           }
         });
 
-        // Eliminar duplicados
-        invitedEmails = Array.from(new Set(extractedEmails));
+        const duplicatesCountTemp =
+          extractedParticipants.length - uniqueParticipants.length;
+
+        invitedParticipants = uniqueParticipants;
+
+        // Actualizar el conteo de duplicados
+        duplicatesCount = duplicatesCountTemp;
       } catch (error) {
         console.error("Error al procesar archivo Excel:", error);
         return {
           success: false,
           message:
-            "Error al procesar el archivo Excel. Verifica que sea un archivo válido.",
+            "Error al procesar el archivo Excel. Verifica que sea un archivo válido con las columnas exactas: dni, nombre y apellidos, programa, mencion, correo.",
         };
       }
     }
@@ -133,8 +228,12 @@ export const createEventAction = async (formData: FormData) => {
     });
 
     // Crear invitaciones en la base de datos
-    const invitationsData = invitedEmails.map((email) => ({
-      email,
+    const invitationsData = invitedParticipants.map((participant) => ({
+      dni: participant.dni,
+      names: participant.names,
+      program: participant.program,
+      mention: participant.mention,
+      email: participant.email,
       eventId: eventCreated.id,
       userId: session.user.id,
       code: crypto.randomUUID(),
@@ -147,8 +246,8 @@ export const createEventAction = async (formData: FormData) => {
     }
 
     const message =
-      invitedEmails.length > 0
-        ? `Evento creado exitosamente. Se procesaron ${invitedEmails.length} correo${invitedEmails.length !== 1 ? "s" : ""}. Las invitaciones con código QR se están enviando.`
+      invitedParticipants.length > 0
+        ? `Evento creado exitosamente. Se procesaron ${invitedParticipants.length} participante${invitedParticipants.length !== 1 ? "s" : ""}.${duplicatesCount > 0 ? ` Se omitieron ${duplicatesCount} DNI${duplicatesCount !== 1 ? "s" : ""} duplicado${duplicatesCount !== 1 ? "s" : ""}.` : ""} Las invitaciones con código QR se están enviando.`
         : "Evento creado exitosamente";
 
     return {

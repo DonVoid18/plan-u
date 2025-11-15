@@ -1,9 +1,8 @@
-import { event, invitationsForEvent, User } from "@prisma/client";
+import { User, event } from "@prisma/client";
 
 interface EventCreatedPageProps {
   event: event & {
     user: User;
-    invitations: invitationsForEvent[];
   };
 }
 
@@ -129,34 +128,6 @@ const EventCreatedPage = ({ event }: EventCreatedPageProps) => {
               </video>
             </div>
           )}
-
-          {/* Invitaciones */}
-          <div className="mb-6">
-            <h3 className="font-semibold text-gray-600 mb-2">
-              Invitaciones ({event.invitations.length})
-            </h3>
-            {event.invitations.length > 0 ? (
-              <div className="max-h-60 overflow-y-auto">
-                {event.invitations.map((invitation) => (
-                  <div
-                    key={invitation.id}
-                    className="flex justify-between items-center p-2 border-b"
-                  >
-                    <span>{invitation.email}</span>
-                    <span
-                      className={`text-sm ${
-                        invitation.scanned ? "text-green-600" : "text-gray-500"
-                      }`}
-                    >
-                      {invitation.scanned ? "Escaneado" : "Pendiente"}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-500">No hay invitaciones</p>
-            )}
-          </div>
 
           {/* Información del creador */}
           <div className="border-t pt-4">

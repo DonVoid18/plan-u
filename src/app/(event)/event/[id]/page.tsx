@@ -8,7 +8,6 @@ const page = async ({ params }: { params: Promise<{ id: string }> }) => {
     where: { id },
     include: {
       user: true,
-      invitations: true,
     },
   });
 

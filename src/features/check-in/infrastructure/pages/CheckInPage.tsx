@@ -1,13 +1,40 @@
 "use client";
 
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/shared/infrastructure/shadcn/components/ui/dialog";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/shared/infrastructure/shadcn/components/ui/tabs";
+import { BadgeCheckIcon, QrCodeIcon, SearchIcon } from "lucide-react";
 import { useRef, useState } from "react";
-import { checkInAction, confirmCheckInAction } from "../actions/checkInAction";
+import {
+  checkInAction,
+  checkInByDniAction,
+  confirmCheckInAction,
+} from "../actions/checkInAction";
 
+import { Badge } from "@/shared/infrastructure/shadcn/components/ui/badge";
+import { Button } from "@/shared/infrastructure/shadcn/components/ui/button";
+import { Checkbox } from "@/shared/infrastructure/shadcn/components/ui/checkbox";
+import { Input } from "@/shared/infrastructure/shadcn/components/ui/input";
+import { Separator } from "@/shared/infrastructure/shadcn/components/ui/separator";
 import { Scanner } from "@yudiel/react-qr-scanner";
 import { toast } from "sonner";
 
 interface InvitationData {
   id: string;
+  dni: string;
+  names: string;
+  program: string;
+  mention: string;
   email: string;
   guest: number;
   eventTitle: string;
@@ -25,6 +52,8 @@ export default function CheckInPage() {
   const [guest2Checked, setGuest2Checked] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const [scannerEnabled, setScannerEnabled] = useState(true);
+  const [dni, setDni] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
   const lastScanTimeRef = useRef<number>(0);
 
   const handleScan = async (result: Array<{ rawValue: string }>) => {
@@ -143,142 +172,268 @@ export default function CheckInPage() {
     toast.info("Cámara reiniciada");
   };
 
+  const handleSearchByDni = async () => {
+    if (!dni.trim()) {
+      toast.error("Por favor ingrese un DNI");
+      return;
+    }
+
+    if (isSearching || showModal) return;
+
+    try {
+      setIsSearching(true);
+
+      // Buscar por DNI usando el nuevo action
+      const response = await checkInByDniAction(dni.trim());
+
+      if (response.success && response.data) {
+        setInvitationData(response.data);
+
+        // Configurar checkboxes según el estado actual
+        if (response.data.guest === 0) {
+          setGuest1Checked(false);
+          setGuest2Checked(false);
+          setShowModal(true);
+        } else if (response.data.guest === 1) {
+          setGuest1Checked(true);
+          setGuest2Checked(false);
+          setShowModal(true);
+          toast.info(response.message);
+        } else if (response.data.guest === 2) {
+          toast.info(response.message);
+        } else {
+          setGuest1Checked(false);
+          setGuest2Checked(false);
+          setShowModal(true);
+        }
+
+        // Limpiar el campo de DNI después de una búsqueda exitosa
+        setDni("");
+      } else {
+        toast.error(response.message);
+      }
+    } catch (error) {
+      console.error("Error al buscar por DNI:", error);
+      toast.error("Error al buscar el invitado");
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="min-h-screen flex justify-center items-center">
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-md mx-auto">
-          <h1 className="text-3xl font-bold text-white text-center mb-8">
-            Check-in de Invitados
-          </h1>
-          <div className="bg-white rounded-lg shadow-xl overflow-hidden">
-            {scannerEnabled ? (
-              <Scanner
-                onScan={handleScan}
-                onError={(error) => console.error(error)}
-                scanDelay={500}
-                constraints={{
-                  facingMode: "environment",
-                  aspectRatio: 1,
-                }}
-              />
-            ) : (
-              <div className="aspect-square flex items-center justify-center bg-gray-100">
-                <p className="text-gray-600">Cámara en pausa...</p>
+          <h1 className="text-3xl font-bold text-center mb-8">TUMITECH</h1>
+
+          <Tabs defaultValue="qr" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="qr">
+                <QrCodeIcon />
+                Escanear QR
+              </TabsTrigger>
+              <TabsTrigger value="dni">
+                <SearchIcon />
+                Buscar por DNI
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="qr" className="space-y-4">
+              <div className="bg-white rounded-lg shadow-xl overflow-hidden">
+                {scannerEnabled ? (
+                  <Scanner
+                    onScan={handleScan}
+                    onError={(error) => console.error(error)}
+                    scanDelay={500}
+                    constraints={{
+                      facingMode: "environment",
+                      aspectRatio: 1,
+                    }}
+                  />
+                ) : (
+                  <div className="aspect-square flex items-center justify-center">
+                    <p>Cámara en pausa...</p>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
 
-          {isProcessing && (
-            <div className="mt-4 text-center text-white">
-              <p>Procesando...</p>
-            </div>
-          )}
+              {isProcessing && (
+                <div className="text-center">
+                  <p>Procesando...</p>
+                </div>
+              )}
 
-          <div className="mt-4 text-center">
-            <button
-              onClick={handleResetScanner}
-              disabled={isProcessing || showModal}
-              className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              🔄 Reiniciar Cámara
-            </button>
-          </div>
+              <div className="text-center">
+                <Button
+                  onClick={handleResetScanner}
+                  disabled={isProcessing || showModal}
+                  className="w-full"
+                >
+                  Reiniciar Cámara
+                </Button>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="dni" className="space-y-4">
+              <div className="bg-white rounded-lg shadow-xl p-6">
+                <div className="space-y-4">
+                  <div>
+                    <label
+                      htmlFor="dni"
+                      className="block text-sm font-medium mb-2"
+                    >
+                      Número de DNI
+                    </label>
+                    <Input
+                      id="dni"
+                      type="text"
+                      placeholder="Ingrese el DNI del invitado"
+                      value={dni}
+                      onChange={(e) => setDni(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          handleSearchByDni();
+                        }
+                      }}
+                      disabled={isSearching || showModal}
+                      maxLength={8}
+                    />
+                  </div>
+
+                  <Button
+                    onClick={handleSearchByDni}
+                    disabled={isSearching || showModal || !dni.trim()}
+                    className="w-full"
+                  >
+                    {isSearching ? "Buscando..." : "Buscar Invitado"}
+                  </Button>
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
 
-      {/* Modal de confirmación */}
-      {showModal && invitationData && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-2xl max-w-md w-full p-6">
-            <h2 className="text-2xl font-bold mb-4 text-gray-800">
-              Confirmar Check-in
-            </h2>
+      {/* Dialog de confirmación */}
+      <Dialog open={showModal} onOpenChange={setShowModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Verificación de identidad</DialogTitle>
+          </DialogHeader>
 
-            <div className="mb-6">
-              <p className="text-gray-700 mb-2">
-                <span className="font-semibold">Evento:</span>{" "}
-                {invitationData.eventTitle}
-              </p>
-              <p className="text-gray-700 mb-4">
-                <span className="font-semibold">Invitado:</span>{" "}
-                {invitationData.email}
-              </p>
+          {invitationData && (
+            <div className="space-y-4">
+              <div className="space-y-2 text-sm">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>DNI</div>
+                  <div className="font-semibold">{invitationData.dni}</div>
+                </div>
+                <Separator />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>Nombre y apellidos</div>
+                  <div className="font-semibold">{invitationData.names}</div>
+                </div>
+                <Separator />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>Programa</div>
+                  <div className="font-semibold">{invitationData.program}</div>
+                </div>
+                <Separator />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>Mención</div>
+                  <div className="font-semibold">{invitationData.mention}</div>
+                </div>
+                <Separator />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>Correo</div>
+                  <div className="font-semibold break-all">
+                    {invitationData.email}
+                  </div>
+                </div>
+              </div>
 
               <div className="border-t pt-4">
-                <p className="font-semibold text-gray-800 mb-3">
-                  Marcar invitados:
-                </p>
+                <p className="font-semibold mb-3">Marcar invitados:</p>
 
                 <div className="space-y-3">
                   <label className="flex items-center space-x-3 cursor-pointer">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={guest1Checked}
-                      onChange={(e) => setGuest1Checked(e.target.checked)}
-                      className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      onCheckedChange={(checked) =>
+                        setGuest1Checked(checked === true)
+                      }
                       disabled={isConfirming || invitationData.guest >= 1}
                     />
                     <span
-                      className={`text-gray-700 ${invitationData.guest >= 1 ? "line-through opacity-60" : ""}`}
+                      className={`${invitationData.guest >= 1 ? "line-through opacity-60" : ""}`}
                     >
                       Invitado 1
                       {invitationData.guest >= 1 && (
-                        <span className="ml-2 text-green-600 text-sm">
-                          (✓ Registrado)
-                        </span>
+                        <Badge
+                          variant="secondary"
+                          className="ml-2 bg-green-500 text-white dark:bg-green-600"
+                        >
+                          <BadgeCheckIcon />
+                          Registrado
+                        </Badge>
                       )}
                     </span>
                   </label>
 
                   <label className="flex items-center space-x-3 cursor-pointer">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={guest2Checked}
-                      onChange={(e) => setGuest2Checked(e.target.checked)}
-                      className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      onCheckedChange={(checked) =>
+                        setGuest2Checked(checked === true)
+                      }
                       disabled={isConfirming || invitationData.guest >= 2}
                     />
                     <span
-                      className={`text-gray-700 ${invitationData.guest >= 2 ? "line-through opacity-60" : ""}`}
+                      className={`${invitationData.guest >= 2 ? "line-through opacity-60" : ""}`}
                     >
                       Invitado 2
                       {invitationData.guest >= 2 && (
-                        <span className="ml-2 text-green-600 text-sm">
-                          (✓ Registrado)
-                        </span>
+                        <Badge
+                          variant="secondary"
+                          className="ml-2 bg-green-500 text-white dark:bg-green-600"
+                        >
+                          <BadgeCheckIcon />
+                          Registrado
+                        </Badge>
                       )}
                     </span>
                   </label>
                 </div>
               </div>
 
-              <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+              <div className="p-3 bg-blue-50 rounded-lg">
                 <p className="text-sm text-gray-700">
                   <span className="font-semibold">Total de asistentes:</span>{" "}
                   {1 + (guest1Checked ? 1 : 0) + (guest2Checked ? 1 : 0)}
                 </p>
               </div>
             </div>
+          )}
 
-            <div className="flex gap-3">
-              <button
-                onClick={handleCancel}
-                disabled={isConfirming}
-                className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleConfirm}
-                disabled={isConfirming}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isConfirming ? "Confirmando..." : "Confirmar"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          <DialogFooter className="grid grid-cols-3 gap-2">
+            <Button
+              onClick={handleCancel}
+              disabled={isConfirming}
+              variant="outline"
+              className="col-span-1"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleConfirm}
+              disabled={isConfirming}
+              className="col-span-2"
+            >
+              {isConfirming ? "Confirmando..." : "Confirmar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

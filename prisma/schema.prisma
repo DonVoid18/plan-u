@@ -95,6 +95,10 @@ model invitationsForEvent {
   eventId   String
   event     event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   userId    String
+  dni       String   @unique
+  names     String
+  program   String
+  mention   String
   email     String
   code      String   @unique
   guest     Int      @default(0)

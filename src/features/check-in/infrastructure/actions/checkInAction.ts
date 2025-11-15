@@ -62,6 +62,10 @@ export const checkInAction = async (code: string) => {
         message: `Check-in para ${invitation.email}. ${statusMessage}`,
         data: {
           id: invitation.id,
+          dni: invitation.dni,
+          names: invitation.names,
+          program: invitation.program,
+          mention: invitation.mention,
           email: invitation.email,
           guest: invitation.guest,
           eventTitle: invitation.event.title,
@@ -77,6 +81,10 @@ export const checkInAction = async (code: string) => {
       message: `Invitación válida para ${invitation.email}`,
       data: {
         id: invitation.id,
+        dni: invitation.dni,
+        names: invitation.names,
+        program: invitation.program,
+        mention: invitation.mention,
         email: invitation.email,
         guest: invitation.guest,
         eventTitle: invitation.event.title,
@@ -85,6 +93,105 @@ export const checkInAction = async (code: string) => {
     };
   } catch (error) {
     console.error("Error en checkInAction:", error);
+    return {
+      success: false,
+      message:
+        "Ocurrió un error inesperado. Por favor, inténtalo de nuevo más tarde.",
+      data: null,
+    };
+  }
+};
+
+export const checkInByDniAction = async (dni: string) => {
+  try {
+    const session = await auth();
+
+    if (!session) {
+      return {
+        success: false,
+        message: "No se encontró la sesión del usuario",
+        data: null,
+      };
+    }
+
+    // Buscar la invitación por DNI
+    const invitation = await prisma.invitationsForEvent.findUnique({
+      where: {
+        dni: dni,
+      },
+      include: {
+        event: true,
+      },
+    });
+
+    if (!invitation) {
+      return {
+        success: false,
+        message: "DNI no encontrado en las invitaciones",
+        data: null,
+      };
+    }
+
+    // Verificar si el evento pertenece al usuario actual
+    if (invitation.event.userId !== session.user?.id) {
+      return {
+        success: false,
+        message: "No tienes permisos para realizar check-in en este evento",
+        data: null,
+      };
+    }
+
+    // Si ya fue escaneado, retornar la información del check-in previo
+    if (invitation.scanned) {
+      const registeredGuests = invitation.guest || 0;
+      const canAddMore = registeredGuests < 2;
+
+      let statusMessage = "";
+      if (registeredGuests === 0) {
+        statusMessage = "Ningún invitado registrado aún.";
+      } else if (registeredGuests === 1) {
+        statusMessage =
+          "Invitado 1 ya registrado. Puedes registrar al invitado 2.";
+      } else {
+        statusMessage = "Ambos invitados ya registrados.";
+      }
+
+      return {
+        success: true,
+        message: `Check-in para ${invitation.email}. ${statusMessage}`,
+        data: {
+          id: invitation.id,
+          dni: invitation.dni,
+          names: invitation.names,
+          program: invitation.program,
+          mention: invitation.mention,
+          email: invitation.email,
+          guest: invitation.guest,
+          eventTitle: invitation.event.title,
+          alreadyScanned: true,
+          canAddMore: canAddMore,
+        },
+      };
+    }
+
+    // Retornar la información de la invitación para que el personal pueda marcar los invitados
+    return {
+      success: true,
+      message: `Invitación válida para ${invitation.email}`,
+      data: {
+        id: invitation.id,
+        dni: invitation.dni,
+        names: invitation.names,
+        program: invitation.program,
+        mention: invitation.mention,
+        email: invitation.email,
+        guest: invitation.guest,
+        eventTitle: invitation.event.title,
+        alreadyScanned: false,
+      },
+    };
+  } catch (error) {
+    console.error("Error en checkInByDniAction:", error);
     return {
       success: false,
       message:
