@@ -47,7 +47,7 @@ import {
 import { useState, useTransition } from "react";
 import { Controller, useForm } from "react-hook-form";
 
-import { createEventAction } from "@/features/event/infrastructure/actions/createEventActions";
+import { createEventAction } from "@/features/event/infrastructure/actions/createEventAction";
 import ExcelEmailUploader from "@/features/event/infrastructure/components/ExcelEmailUploader";
 import ThemePresetSelect from "@/features/theme-selector-event/infrastructure/components/ThemePresetSelect";
 import { useSettings } from "@/features/theme-selector-event/infrastructure/hooks/useSettings";
@@ -284,7 +284,7 @@ const EventPage = () => {
               />
             ) : (
               <img
-                src="https://i.ytimg.com/vi/XG9kptX4aDc/hq720.jpg?sqp=-oaymwEhCK4FEIIDSFryq4qpAxMIARUAAAAAGAElAADIQj0AgKJD&rs=AOn4CLBolv2e3qppO-UPWphygwCJ2llfRw"
+                src="https://picsum.photos/1080/720"
                 alt="Event decorations"
                 className="w-full h-full object-cover"
               />

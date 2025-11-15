@@ -97,6 +97,8 @@ model invitationsForEvent {
   userId    String
   email     String
   code      String   @unique
+  guest     Int      @default(0)
   scanned   Boolean  @default(false)
   createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 }
