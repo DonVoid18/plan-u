@@ -74,12 +74,12 @@ export const createEventAction = async (formData: FormData) => {
         // Convertir a JSON con encabezados
         const jsonData = XLSX.utils.sheet_to_json(worksheet) as Record<
           string,
-          any
+          unknown
         >[];
 
         // Función para encontrar columna case-insensitive y sin espacios extras
         const findColumn = (
-          row: Record<string, any>,
+          row: Record<string, unknown>,
           columnName: string
         ): string | undefined => {
           const key = Object.keys(row).find(
