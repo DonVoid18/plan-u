@@ -224,7 +224,13 @@ export default function CheckInPage() {
     <div className="min-h-screen flex justify-center items-center">
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-md mx-auto">
-          <h1 className="text-3xl font-bold text-center mb-8">TUMITECH</h1>
+          <div>
+            <h1 className="text-3xl font-bold text-center">TUMITECH</h1>
+            <div className="text-sm text-center opacity-50">
+              Tecnología & Soluciones
+            </div>
+          </div>
+          <Separator className="my-4" />
 
           <Tabs defaultValue="qr" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
