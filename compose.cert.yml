@@ -1,0 +1,22 @@
+services:
+  nginx:
+    image: nginx:1.29-alpine
+    ports:
+      - 80:80
+    volumes:
+      - ./docker/www/certificate/nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - certbot-etc:/etc/letsencrypt:ro
+      - certbot-webroot:/var/www/html
+    environment:
+      SSL_DOMAIN_1: ${SSL_DOMAIN_1}
+  certbot:
+    image: certbot/certbot
+    command: certonly --webroot --webroot-path=/var/www/html --email ${SSL_EMAIL} --agree-tos --no-eff-email --keep-until-expiring -d ${SSL_DOMAIN_1}
+    volumes:
+      - certbot-etc:/etc/letsencrypt
+      - certbot-webroot:/var/www/html
+    depends_on:
+      - nginx
+volumes:
+  certbot-etc:
+  certbot-webroot:

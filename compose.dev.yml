@@ -22,5 +22,18 @@ services:
     environment:
       POSTGRES_USER: ${DB_USERNAME}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
+  nginx:
+    image: nginx:1.29-alpine
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - ./docker/www/production/nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - certbot-etc:/etc/letsencrypt:ro
+      - certbot-webroot:/var/www/html
+    environment:
+      - SSL_DOMAIN_1=${SSL_DOMAIN_1}
 volumes:
   dbdata:
+  certbot-etc:
+  certbot-webroot:
